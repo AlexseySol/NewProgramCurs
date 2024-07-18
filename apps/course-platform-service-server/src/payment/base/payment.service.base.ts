@@ -18,6 +18,7 @@ import {
   Course as PrismaCourse,
 } from "@prisma/client";
 
+import { PaymentCustomDto } from "../PaymentCustomDto";
 import { PaymentInputDto } from "../PaymentInputDto";
 import { PaymentOutputDto } from "../PaymentOutputDto";
 
@@ -60,6 +61,11 @@ export class PaymentServiceBase {
         where: { id: parentId },
       })
       .course();
+  }
+  async GetPaymentCustomData(
+    args: PaymentCustomDto
+  ): Promise<PaymentCustomDto[]> {
+    throw new Error("Not implemented");
   }
   async PaymentAction(args: PaymentInputDto): Promise<PaymentOutputDto> {
     throw new Error("Not implemented");

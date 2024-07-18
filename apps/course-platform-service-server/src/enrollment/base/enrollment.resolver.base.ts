@@ -13,6 +13,12 @@ import * as graphql from "@nestjs/graphql";
 import { GraphQLError } from "graphql";
 import { isRecordNotFoundError } from "../../prisma.util";
 import { MetaQueryPayload } from "../../util/MetaQueryPayload";
+import * as nestAccessControl from "nest-access-control";
+import * as gqlACGuard from "../../auth/gqlAC.guard";
+import { GqlDefaultAuthGuard } from "../../auth/gqlDefaultAuth.guard";
+import * as common from "@nestjs/common";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
 import { Enrollment } from "./Enrollment";
 import { EnrollmentCountArgs } from "./EnrollmentCountArgs";
 import { EnrollmentFindManyArgs } from "./EnrollmentFindManyArgs";
@@ -22,11 +28,22 @@ import { UpdateEnrollmentArgs } from "./UpdateEnrollmentArgs";
 import { DeleteEnrollmentArgs } from "./DeleteEnrollmentArgs";
 import { User } from "../../user/base/User";
 import { Course } from "../../course/base/Course";
+import { EnrollmentCustomDto } from "../EnrollmentCustomDto";
 import { EnrollmentService } from "../enrollment.service";
+@common.UseGuards(GqlDefaultAuthGuard, gqlACGuard.GqlACGuard)
 @graphql.Resolver(() => Enrollment)
 export class EnrollmentResolverBase {
-  constructor(protected readonly service: EnrollmentService) {}
+  constructor(
+    protected readonly service: EnrollmentService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
 
+  @graphql.Query(() => MetaQueryPayload)
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "read",
+    possession: "any",
+  })
   async _enrollmentsMeta(
     @graphql.Args() args: EnrollmentCountArgs
   ): Promise<MetaQueryPayload> {
@@ -36,14 +53,26 @@ export class EnrollmentResolverBase {
     };
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.Query(() => [Enrollment])
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "read",
+    possession: "any",
+  })
   async enrollments(
     @graphql.Args() args: EnrollmentFindManyArgs
   ): Promise<Enrollment[]> {
     return this.service.enrollments(args);
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.Query(() => Enrollment, { nullable: true })
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "read",
+    possession: "own",
+  })
   async enrollment(
     @graphql.Args() args: EnrollmentFindUniqueArgs
   ): Promise<Enrollment | null> {
@@ -54,7 +83,13 @@ export class EnrollmentResolverBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @graphql.Mutation(() => Enrollment)
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "create",
+    possession: "any",
+  })
   async createEnrollment(
     @graphql.Args() args: CreateEnrollmentArgs
   ): Promise<Enrollment> {
@@ -78,7 +113,13 @@ export class EnrollmentResolverBase {
     });
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @graphql.Mutation(() => Enrollment)
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "update",
+    possession: "any",
+  })
   async updateEnrollment(
     @graphql.Args() args: UpdateEnrollmentArgs
   ): Promise<Enrollment | null> {
@@ -112,6 +153,11 @@ export class EnrollmentResolverBase {
   }
 
   @graphql.Mutation(() => Enrollment)
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "delete",
+    possession: "any",
+  })
   async deleteEnrollment(
     @graphql.Args() args: DeleteEnrollmentArgs
   ): Promise<Enrollment | null> {
@@ -127,9 +173,15 @@ export class EnrollmentResolverBase {
     }
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.ResolveField(() => User, {
     nullable: true,
     name: "user",
+  })
+  @nestAccessControl.UseRoles({
+    resource: "User",
+    action: "read",
+    possession: "any",
   })
   async getUser(@graphql.Parent() parent: Enrollment): Promise<User | null> {
     const result = await this.service.getUser(parent.id);
@@ -140,9 +192,15 @@ export class EnrollmentResolverBase {
     return result;
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.ResolveField(() => Course, {
     nullable: true,
     name: "course",
+  })
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "read",
+    possession: "any",
   })
   async getCourse(
     @graphql.Parent() parent: Enrollment
@@ -153,5 +211,13 @@ export class EnrollmentResolverBase {
       return null;
     }
     return result;
+  }
+
+  @graphql.Query(() => [EnrollmentCustomDto])
+  async GetEnrollmentCustomData(
+    @graphql.Args()
+    args: EnrollmentCustomDto
+  ): Promise<EnrollmentCustomDto[]> {
+    return this.service.GetEnrollmentCustomData(args);
   }
 }

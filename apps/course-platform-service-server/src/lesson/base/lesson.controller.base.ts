@@ -16,17 +16,36 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { LessonService } from "../lesson.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { LessonCreateInput } from "./LessonCreateInput";
 import { Lesson } from "./Lesson";
 import { LessonFindManyArgs } from "./LessonFindManyArgs";
 import { LessonWhereUniqueInput } from "./LessonWhereUniqueInput";
 import { LessonUpdateInput } from "./LessonUpdateInput";
+import { LessonCustomDto } from "../LessonCustomDto";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class LessonControllerBase {
-  constructor(protected readonly service: LessonService) {}
+  constructor(
+    protected readonly service: LessonService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Lesson })
+  @nestAccessControl.UseRoles({
+    resource: "Lesson",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createLesson(@common.Body() data: LessonCreateInput): Promise<Lesson> {
     return await this.service.createLesson({
       data: {
@@ -56,9 +75,18 @@ export class LessonControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Lesson] })
   @ApiNestedQuery(LessonFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Lesson",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async lessons(@common.Req() request: Request): Promise<Lesson[]> {
     const args = plainToClass(LessonFindManyArgs, request.query);
     return this.service.lessons({
@@ -81,9 +109,18 @@ export class LessonControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Lesson })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Lesson",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async lesson(
     @common.Param() params: LessonWhereUniqueInput
   ): Promise<Lesson | null> {
@@ -113,9 +150,18 @@ export class LessonControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Lesson })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Lesson",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateLesson(
     @common.Param() params: LessonWhereUniqueInput,
     @common.Body() data: LessonUpdateInput
@@ -161,6 +207,14 @@ export class LessonControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Lesson })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Lesson",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteLesson(
     @common.Param() params: LessonWhereUniqueInput
   ): Promise<Lesson | null> {
@@ -191,5 +245,22 @@ export class LessonControllerBase {
       }
       throw error;
     }
+  }
+
+  @common.Get("/lesson/custom-data")
+  @swagger.ApiOkResponse({
+    type: LessonCustomDto,
+  })
+  @swagger.ApiNotFoundResponse({
+    type: errors.NotFoundException,
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
+  async GetLessonCustomData(
+    @common.Body()
+    body: LessonCustomDto
+  ): Promise<LessonCustomDto[]> {
+    return this.service.GetLessonCustomData(body);
   }
 }

@@ -18,6 +18,8 @@ import {
   Course as PrismaCourse,
 } from "@prisma/client";
 
+import { EnrollmentCustomDto } from "../EnrollmentCustomDto";
+
 export class EnrollmentServiceBase {
   constructor(protected readonly prisma: PrismaService) {}
 
@@ -67,5 +69,10 @@ export class EnrollmentServiceBase {
         where: { id: parentId },
       })
       .course();
+  }
+  async GetEnrollmentCustomData(
+    args: EnrollmentCustomDto
+  ): Promise<EnrollmentCustomDto[]> {
+    throw new Error("Not implemented");
   }
 }

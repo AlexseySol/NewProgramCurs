@@ -16,17 +16,36 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { EnrollmentService } from "../enrollment.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { EnrollmentCreateInput } from "./EnrollmentCreateInput";
 import { Enrollment } from "./Enrollment";
 import { EnrollmentFindManyArgs } from "./EnrollmentFindManyArgs";
 import { EnrollmentWhereUniqueInput } from "./EnrollmentWhereUniqueInput";
 import { EnrollmentUpdateInput } from "./EnrollmentUpdateInput";
+import { EnrollmentCustomDto } from "../EnrollmentCustomDto";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class EnrollmentControllerBase {
-  constructor(protected readonly service: EnrollmentService) {}
+  constructor(
+    protected readonly service: EnrollmentService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Enrollment })
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createEnrollment(
     @common.Body() data: EnrollmentCreateInput
   ): Promise<Enrollment> {
@@ -67,9 +86,18 @@ export class EnrollmentControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Enrollment] })
   @ApiNestedQuery(EnrollmentFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async enrollments(@common.Req() request: Request): Promise<Enrollment[]> {
     const args = plainToClass(EnrollmentFindManyArgs, request.query);
     return this.service.enrollments({
@@ -95,9 +123,18 @@ export class EnrollmentControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Enrollment })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async enrollment(
     @common.Param() params: EnrollmentWhereUniqueInput
   ): Promise<Enrollment | null> {
@@ -130,9 +167,18 @@ export class EnrollmentControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Enrollment })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateEnrollment(
     @common.Param() params: EnrollmentWhereUniqueInput,
     @common.Body() data: EnrollmentUpdateInput
@@ -187,6 +233,14 @@ export class EnrollmentControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Enrollment })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteEnrollment(
     @common.Param() params: EnrollmentWhereUniqueInput
   ): Promise<Enrollment | null> {
@@ -220,5 +274,22 @@ export class EnrollmentControllerBase {
       }
       throw error;
     }
+  }
+
+  @common.Get("/enrollment/custom-data")
+  @swagger.ApiOkResponse({
+    type: EnrollmentCustomDto,
+  })
+  @swagger.ApiNotFoundResponse({
+    type: errors.NotFoundException,
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
+  async GetEnrollmentCustomData(
+    @common.Body()
+    body: EnrollmentCustomDto
+  ): Promise<EnrollmentCustomDto[]> {
+    return this.service.GetEnrollmentCustomData(body);
   }
 }

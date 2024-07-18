@@ -15,6 +15,7 @@ import {
   Lesson as PrismaLesson,
   Course as PrismaCourse,
 } from "@prisma/client";
+import { LessonCustomDto } from "../LessonCustomDto";
 
 export class LessonServiceBase {
   constructor(protected readonly prisma: PrismaService) {}
@@ -47,5 +48,8 @@ export class LessonServiceBase {
         where: { id: parentId },
       })
       .course();
+  }
+  async GetLessonCustomData(args: LessonCustomDto): Promise<LessonCustomDto[]> {
+    throw new Error("Not implemented");
   }
 }

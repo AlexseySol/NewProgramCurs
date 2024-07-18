@@ -20,6 +20,8 @@ import {
   User as PrismaUser,
 } from "@prisma/client";
 
+import { CourseCustomDto } from "../CourseCustomDto";
+
 export class CourseServiceBase {
   constructor(protected readonly prisma: PrismaService) {}
 
@@ -87,5 +89,8 @@ export class CourseServiceBase {
         where: { id: parentId },
       })
       .users(args);
+  }
+  async GetCourseCustomData(args: CourseCustomDto): Promise<CourseCustomDto[]> {
+    throw new Error("Not implemented");
   }
 }

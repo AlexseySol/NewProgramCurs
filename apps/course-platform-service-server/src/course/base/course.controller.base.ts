@@ -16,7 +16,11 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { CourseService } from "../course.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { CourseCreateInput } from "./CourseCreateInput";
 import { Course } from "./Course";
 import { CourseFindManyArgs } from "./CourseFindManyArgs";
@@ -34,11 +38,26 @@ import { EnrollmentWhereUniqueInput } from "../../enrollment/base/EnrollmentWher
 import { UserFindManyArgs } from "../../user/base/UserFindManyArgs";
 import { User } from "../../user/base/User";
 import { UserWhereUniqueInput } from "../../user/base/UserWhereUniqueInput";
+import { CourseCustomDto } from "../CourseCustomDto";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class CourseControllerBase {
-  constructor(protected readonly service: CourseService) {}
+  constructor(
+    protected readonly service: CourseService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Course })
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createCourse(@common.Body() data: CourseCreateInput): Promise<Course> {
     return await this.service.createCourse({
       data: data,
@@ -54,9 +73,18 @@ export class CourseControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Course] })
   @ApiNestedQuery(CourseFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async courses(@common.Req() request: Request): Promise<Course[]> {
     const args = plainToClass(CourseFindManyArgs, request.query);
     return this.service.courses({
@@ -73,9 +101,18 @@ export class CourseControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Course })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async course(
     @common.Param() params: CourseWhereUniqueInput
   ): Promise<Course | null> {
@@ -99,9 +136,18 @@ export class CourseControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Course })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateCourse(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() data: CourseUpdateInput
@@ -133,6 +179,14 @@ export class CourseControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Course })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteCourse(
     @common.Param() params: CourseWhereUniqueInput
   ): Promise<Course | null> {
@@ -159,8 +213,14 @@ export class CourseControllerBase {
     }
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/lessons")
   @ApiNestedQuery(LessonFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Lesson",
+    action: "read",
+    possession: "any",
+  })
   async findLessons(
     @common.Req() request: Request,
     @common.Param() params: CourseWhereUniqueInput
@@ -193,6 +253,11 @@ export class CourseControllerBase {
   }
 
   @common.Post("/:id/lessons")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async connectLessons(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: LessonWhereUniqueInput[]
@@ -210,6 +275,11 @@ export class CourseControllerBase {
   }
 
   @common.Patch("/:id/lessons")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async updateLessons(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: LessonWhereUniqueInput[]
@@ -227,6 +297,11 @@ export class CourseControllerBase {
   }
 
   @common.Delete("/:id/lessons")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async disconnectLessons(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: LessonWhereUniqueInput[]
@@ -243,8 +318,14 @@ export class CourseControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/payments")
   @ApiNestedQuery(PaymentFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Payment",
+    action: "read",
+    possession: "any",
+  })
   async findPayments(
     @common.Req() request: Request,
     @common.Param() params: CourseWhereUniqueInput
@@ -281,6 +362,11 @@ export class CourseControllerBase {
   }
 
   @common.Post("/:id/payments")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async connectPayments(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: PaymentWhereUniqueInput[]
@@ -298,6 +384,11 @@ export class CourseControllerBase {
   }
 
   @common.Patch("/:id/payments")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async updatePayments(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: PaymentWhereUniqueInput[]
@@ -315,6 +406,11 @@ export class CourseControllerBase {
   }
 
   @common.Delete("/:id/payments")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async disconnectPayments(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: PaymentWhereUniqueInput[]
@@ -331,8 +427,14 @@ export class CourseControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/enrollments")
   @ApiNestedQuery(EnrollmentFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Enrollment",
+    action: "read",
+    possession: "any",
+  })
   async findEnrollments(
     @common.Req() request: Request,
     @common.Param() params: CourseWhereUniqueInput
@@ -368,6 +470,11 @@ export class CourseControllerBase {
   }
 
   @common.Post("/:id/enrollments")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async connectEnrollments(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: EnrollmentWhereUniqueInput[]
@@ -385,6 +492,11 @@ export class CourseControllerBase {
   }
 
   @common.Patch("/:id/enrollments")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async updateEnrollments(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: EnrollmentWhereUniqueInput[]
@@ -402,6 +514,11 @@ export class CourseControllerBase {
   }
 
   @common.Delete("/:id/enrollments")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async disconnectEnrollments(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: EnrollmentWhereUniqueInput[]
@@ -418,8 +535,14 @@ export class CourseControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/users")
   @ApiNestedQuery(UserFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "User",
+    action: "read",
+    possession: "any",
+  })
   async findUsers(
     @common.Req() request: Request,
     @common.Param() params: CourseWhereUniqueInput
@@ -455,6 +578,11 @@ export class CourseControllerBase {
   }
 
   @common.Post("/:id/users")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async connectUsers(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: UserWhereUniqueInput[]
@@ -472,6 +600,11 @@ export class CourseControllerBase {
   }
 
   @common.Patch("/:id/users")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async updateUsers(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: UserWhereUniqueInput[]
@@ -489,6 +622,11 @@ export class CourseControllerBase {
   }
 
   @common.Delete("/:id/users")
+  @nestAccessControl.UseRoles({
+    resource: "Course",
+    action: "update",
+    possession: "any",
+  })
   async disconnectUsers(
     @common.Param() params: CourseWhereUniqueInput,
     @common.Body() body: UserWhereUniqueInput[]
@@ -503,5 +641,22 @@ export class CourseControllerBase {
       data,
       select: { id: true },
     });
+  }
+
+  @common.Get("/course/custom-data")
+  @swagger.ApiOkResponse({
+    type: CourseCustomDto,
+  })
+  @swagger.ApiNotFoundResponse({
+    type: errors.NotFoundException,
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
+  async GetCourseCustomData(
+    @common.Body()
+    body: CourseCustomDto
+  ): Promise<CourseCustomDto[]> {
+    return this.service.GetCourseCustomData(body);
   }
 }
