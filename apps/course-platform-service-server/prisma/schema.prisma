@@ -1,0 +1,77 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Course {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  price       Float?
+  name        String?
+  description String?
+  lessons     Lesson[]
+  payments    Payment[]
+  enrollments Enrollment[]
+  title       String?
+  users       User[]
+
+  @@sadasdasdas
+}
+
+model Lesson {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String?
+  content   String?
+  video     Json?
+  photo     Json?
+  course    Course?  @relation(fields: [courseId], references: [id])
+  courseId  String?
+}
+
+model Payment {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  amount      Float?
+  paymentDate DateTime?
+  user        User?     @relation(fields: [userId], references: [id])
+  userId      String?
+  course      Course?   @relation(fields: [courseId], references: [id])
+  courseId    String?
+}
+
+model User {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  firstName   String?
+  lastName    String?
+  username    String       @unique
+  email       String?      @unique
+  password    String
+  roles       Json
+  payments    Payment[]
+  enrollments Enrollment[]
+  title       String?
+  content     String?
+  course      Course?      @relation(fields: [courseId], references: [id])
+  courseId    String?
+}
+
+model Enrollment {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  enrolledAt DateTime?
+  user       User?     @relation(fields: [userId], references: [id])
+  userId     String?
+  course     Course?   @relation(fields: [courseId], references: [id])
+  courseId   String?
+}
